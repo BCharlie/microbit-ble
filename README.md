@@ -219,6 +219,12 @@ npm run dev  # Uses nodemon for auto-restart
 
 ISC License - see package.json for details
 
+## Disclaimer
+
+**NO WARRANTY IMPLIED OR OTHERWISE. USE AT YOUR OWN RISK.**
+
+This software is provided "as is" without warranty of any kind, express or implied. The authors are not responsible for any damage, data loss, or hardware issues that may result from using this software. Users assume all responsibility for testing and validating the software in their specific environment before deployment.
+
 ## Acknowledgments
 
 - Built using [@abandonware/noble](https://github.com/abandonware/noble) for BLE communication
