@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>micro:bit Bluetooth Scanner</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        button {
+            background-color: #0078e7;
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            font-size: 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 20px 0;
+        }
+        button:hover {
+            background-color: #0056a4;
+        }
+        #status {
+            border: 1px solid #ddd;
+            padding: 15px;
+            border-radius: 4px;
+            min-height: 200px;
+            background-color: #f9f9f9;
+            overflow-y: auto;
+            max-height: 400px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h1>micro:bit Bluetooth Scanner</h1>
+    <p>This page allows you to scan for and connect to a micro:bit using Bluetooth Low Energy (BLE) without pairing.</p>
+    
+    <button id="scanButton">Scan for micro:bit</button>
+    
+    <h2>Status:</h2>
+    <div id="status">Waiting to scan...</div>
+    
+    <script>
+        // DOM elements
+        const scanButton = document.getElementById('scanButton');
+        const statusDiv = document.getElementById('status');
+        
+        // Check if Web Bluetooth is supported
+        if (!navigator.bluetooth) {
+            statusDiv.innerHTML = '<p class="error">Web Bluetooth is not supported in this browser. Please use Chrome on macOS, or check chrome://flags to enable experimental features.</p>';
+            scanButton.disabled = true;
+        }
+        
+        // Log function that updates the status div
+        function log(message, isError = false) {
+            const messageElement = document.createElement('p');
+            messageElement.textContent = message;
+            if (isError) {
+                messageElement.classList.add('error');
+            } else {
+                messageElement.classList.add('success');
+            }
+            statusDiv.appendChild(messageElement);
+            console.log(message);
+        }
+        
+        // Clear the status div
+        function clearStatus() {
+            statusDiv.innerHTML = '';
+        }
+        
+        // Main function to scan for micro:bit
+        async function scanForMicrobit() {
+            clearStatus();
+            try {
+                // FIXED: Correct structure for requestDevice options
+                const requestOptions = {
+                    // Either use filters approach:
+                    filters: [
+                        { services: ['e95d0000-251d-470a-a062-fa1922dfa9a8'] }
+                    ],
+                    // Include all services we want to access
+                    optionalServices: [
+                        'e95dd91d-251d-470a-a062-fa1922dfa9a8' // LED service
+                    ]
+                };
+                
+                // Alternative approach using acceptAllDevices
+                /*
+                const requestOptions = {
+                    acceptAllDevices: true,
+                    optionalServices: [
+                        'e95d0000-251d-470a-a062-fa1922dfa9a8', // Generic service
+                        'e95dd91d-251d-470a-a062-fa1922dfa9a8'  // LED service
+                    ]
+                };
+                */
+                
+                log('Scanning for micro:bit devices...');
+                
+                // Fixed requestDevice call
+                const device = await navigator.bluetooth.requestDevice(requestOptions);
+                
+                log(`Found device: ${device.name || 'Unknown device'}`);
+                
+                // Connect to the GATT server
+                log('Connecting to GATT server...');
+                const server = await device.gatt.connect();
+                log('Connected to GATT server');
+                
+                // Get the LED service
+                log('Accessing LED matrix service...');
+                const ledService = await server.getPrimaryService('e95dd91d-251d-470a-a062-fa1922dfa9a8');
+                const ledMatrixCharacteristic = await ledService.getCharacteristic('e95d7b77-251d-470a-a062-fa1922dfa9a8');
+                
+                // Display a heart pattern on the LED matrix
+                log('Sending data to display on LED matrix...');
+                const ledMatrix = new Uint8Array([0x08, 0x1C, 0x3E, 0x1C, 0x08]);
+                await ledMatrixCharacteristic.writeValue(ledMatrix);
+                
+                log('Data sent to micro:bit successfully! A heart should appear on the LED matrix.');
+                
+                // Listen for disconnect
+                device.addEventListener('gattserverdisconnected', () => {
+                    log('Disconnected from micro:bit');
+                });
+                
+                return device;
+            } catch (error) {
+                log(`Bluetooth Error: ${error.message}`, true);
+                console.error('Detailed error:', error);
+            }
+        }
+        
+        // Attach click handler to scan button
+        scanButton.addEventListener('click', scanForMicrobit);
+    </script>
+    
+    <h3>Troubleshooting:</h3>
+    <ul>
+        <li>If your micro:bit isn't showing up, make sure it's programmed to enable Bluetooth services</li>
+        <li>Try the "acceptAllDevices" approach by uncommenting the alternative code if your micro:bit isn't being detected</li>
+        <li>Check that your micro:bit has sufficient power (USB connection or fresh batteries)</li>
+        <li>This page must be served over HTTPS or from localhost to use Web Bluetooth API</li>
+    </ul>
+</body>
+</html>
